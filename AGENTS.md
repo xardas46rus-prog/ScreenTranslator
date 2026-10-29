@@ -22,4 +22,9 @@ This repository hosts a Windows 10/11 x64 Python OCR translator: English/Chinese
 - Launcher tests: python -m unittest discover -s tests_launcher -p "test_*.py"
 - Windows release: build_exe.bat and build_launcher.bat; confirm OCR, Argos, Ollama and overlay in Windows before distributing.
 
-Before starting: read README.md and inspect current version and tests. If source code is not present, ask to import the project archive rather than invent files.
+## Missing original source / старт Codex без архива
+Before starting: read README.md, CODEX_CHAT_START_RU.md and inspect current version and tests.
+- If original source code is missing and the task is **migration or audit of v3.3.2**, request the project archive. Never fabricate source code and claim it is v3.3.2.
+- If the user explicitly requests **development before archive import** (see GitHub issue #2), a new clean-room prototype may be built in a feature branch with tests and a PR. Clearly label it as a prototype, not migrated v3.3.2.
+- Do not overwrite imported original source or merge incompatible bootstrap code without inspecting changes and asking for review.
+- Work with the repository selected in the Codex environment; never assume that a linked GitHub account alone grants Codex access.
