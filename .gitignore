@@ -218,3 +218,28 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ScreenTranslator local state and secrets
+.venv/
+.venv*/
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.zip
+*.exe
+*.msi
+*.onnx
+*.gguf
+*.traineddata
+**/settings.json
+**/provider_keys.dpapi.json
+**/*secret*.json
+**/private*.json
+**/models/
+**/Tesseract-OCR/
+**/argos_packages/
+**/patch_backups/
+**/backup*/
