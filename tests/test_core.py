@@ -68,6 +68,12 @@ class ChatTests(unittest.TestCase):
         self.frame("Hello\nHello")
         self.assertEqual(self.frame("Hello\nHello"), ["Hello"])
 
+    def test_slow_ocr_does_not_repeat_an_unchanged_visible_frame(self):
+        processor = ChatProcessor(clock=self.clock, interval=0, confirmations=1, cooldown=1)
+        self.assertEqual(processor.process("Hello team", visible=True), ["Hello team"])
+        self.clock.now += 5
+        self.assertEqual(processor.process("Hello team", visible=True), [])
+
     def test_same_text_can_return_after_absence_and_cooldown(self):
         self.frame("Hello team")
         self.frame("Hello team")

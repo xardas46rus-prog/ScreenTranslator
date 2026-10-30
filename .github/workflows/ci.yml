@@ -46,6 +46,14 @@ jobs:
       - name: Translator tests (headless)
         if: steps.files.outputs.present == 'true'
         run: python -m unittest discover -s tests -p "test_*.py" -v
+      - name: GUI tests (Windows desktop)
+        if: runner.os == 'Windows' && steps.files.outputs.present == 'true'
+        env:
+          SCREENTRANSLATOR_GUI_TESTS: "1"
+        run: python -m unittest discover -s tests -p "test_gui.py" -v
+      - name: GUI tests (Linux virtual display)
+        if: runner.os == 'Linux' && steps.files.outputs.present == 'true'
+        run: xvfb-run -a env SCREENTRANSLATOR_GUI_TESTS=1 python -m unittest discover -s tests -p "test_gui.py" -v
       - name: Launcher tests
         if: hashFiles('tests_launcher/test_*.py') != ''
         run: python -m unittest discover -s tests_launcher -p "test_*.py" -v
