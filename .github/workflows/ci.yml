@@ -26,7 +26,7 @@ jobs:
         id: files
         shell: bash
         run: |
-          if [ -f screen_translator/core.py ] && [ -f launcher/update.py ]; then
+          if [ -f screen_translator/core.py ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
@@ -40,11 +40,12 @@ jobs:
       - name: Compile and import
         if: steps.files.outputs.present == 'true'
         run: |
-          python -m compileall -q screen_translator launcher tools
-          python -c "import screen_translator.core, screen_translator.chat_mode, launcher.update"
-      - name: Core translator tests (headless)
+          python -m compileall -q screen_translator tests
+          python -c "import screen_translator.core, screen_translator.providers, screen_translator.worker"
+          python -m screen_translator --version
+      - name: Translator tests (headless)
         if: steps.files.outputs.present == 'true'
-        run: python -m unittest discover -s tests -p "test_core.py" -v
+        run: python -m unittest discover -s tests -p "test_*.py" -v
       - name: Launcher tests
-        if: steps.files.outputs.present == 'true'
+        if: hashFiles('tests_launcher/test_*.py') != ''
         run: python -m unittest discover -s tests_launcher -p "test_*.py" -v
