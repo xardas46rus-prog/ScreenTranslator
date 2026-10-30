@@ -52,7 +52,18 @@ class ChatProcessor:
         self._candidates = {}
         self._seen = OrderedDict()
 
-    def process(self, text: str, *, visible: bool) -> list[str]:
+    def reset_confirmation(self):
+        """Забыть неподтверждённый кадр, сохранив историю выданных сообщений."""
+        self._candidates.clear()
+
+    def remember(self, line: str):
+        key = normalize_line(line).casefold()
+        self._seen[key] = self.clock()
+        self._seen.move_to_end(key)
+        while len(self._seen) > self.capacity:
+            self._seen.popitem(last=False)
+
+    def process(self, text: str, *, visible: bool, mark_seen=True) -> list[str]:
         if not visible:
             self._candidates.clear()
             return []
@@ -61,7 +72,7 @@ class ChatProcessor:
             return []
         self._last_frame = now
         for key, seen_at in list(self._seen.items()):
-            if now - seen_at >= self.cooldown:
+            if now - seen_at >= self.cooldown and key not in self._candidates:
                 del self._seen[key]
         lines = text[:32768].splitlines()[-self.max_lines:]
         candidates = {}
@@ -80,8 +91,43 @@ class ChatProcessor:
                 self._seen.move_to_end(key)
             elif count >= self.confirmations:
                 result.append(line)
-                self._seen[key] = now
-                while len(self._seen) > self.capacity:
-                    self._seen.popitem(last=False)
+                if mark_seen:
+                    self.remember(line)
         self._candidates = candidates
         return result
+
+
+class RegionProcessor:
+    """Обычный OCR: стабильный блок текста целиком, без фильтра игрового чата."""
+
+    def __init__(self, *, confirmations=2):
+        self.confirmations = confirmations
+        self._candidate = ""
+        self._count = 0
+        self._last_emitted = ""
+
+    def reset_confirmation(self):
+        self._candidate = ""
+        self._count = 0
+
+    def remember(self, text: str):
+        self._last_emitted = text
+
+    def process(self, text: str, *, visible: bool, mark_seen=True) -> list[str]:
+        if not visible:
+            self.reset_confirmation()
+            return []
+        text = "\n".join(normalize_line(line) for line in text[:32768].splitlines()).strip()
+        if not text:
+            self.reset_confirmation()
+            self._last_emitted = ""
+            return []
+        if text == self._candidate:
+            self._count = min(self._count + 1, self.confirmations)
+        else:
+            self._candidate, self._count = text, 1
+        if self._count >= self.confirmations and text != self._last_emitted:
+            if mark_seen:
+                self.remember(text)
+            return [text]
+        return []
