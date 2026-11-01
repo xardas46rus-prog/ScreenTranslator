@@ -87,6 +87,9 @@ jobs:
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```text'
             Get-Content build/portable-ci.log -Tail 100 | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```'
+            $detail = (Get-Content build/portable-ci.log -Tail 20) -join "`n"
+            $detail = $detail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Portable build::$detail"
             exit $buildExit
           }
       - name: Python regression tests
