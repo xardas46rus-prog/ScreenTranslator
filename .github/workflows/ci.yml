@@ -76,8 +76,19 @@ jobs:
           python-version: "3.12"
           architecture: x64
       - name: Build portable (OCR; optional Argos runtime, no models)
-        shell: cmd
-        run: build_exe.bat ${{ matrix.profile == 'argos' && '--argos' || '' }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          $buildArgs = if ('${{ matrix.profile }}' -eq 'argos') { '--argos' } else { '' }
+          & cmd /d /c "build_exe.bat $buildArgs 2>&1" | Tee-Object -FilePath build/portable-ci.log
+          $buildExit = $LASTEXITCODE
+          if ($buildExit -ne 0) {
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '### Portable build failure'
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```text'
+            Get-Content build/portable-ci.log -Tail 100 | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```'
+            exit $buildExit
+          }
       - name: Python regression tests
         shell: pwsh
         env:
