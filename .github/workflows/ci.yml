@@ -2,7 +2,7 @@ name: Screen Translator checks
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/issue-4-windows-portable-exe]
   pull_request:
   workflow_dispatch:
 
@@ -57,3 +57,72 @@ jobs:
       - name: Launcher tests
         if: hashFiles('tests_launcher/test_*.py') != ''
         run: python -m unittest discover -s tests_launcher -p "test_*.py" -v
+
+  portable:
+    name: Windows x64 portable (${{ matrix.profile }}, unsigned test only)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [ocr, argos]
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+      - name: Build portable (OCR; optional Argos runtime, no models)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          $buildArgs = if ('${{ matrix.profile }}' -eq 'argos') { '--argos' } else { '' }
+          & cmd /d /c "build_exe.bat $buildArgs 2>&1" | Tee-Object -FilePath build/portable-ci.log
+          $buildExit = $LASTEXITCODE
+          if ($buildExit -ne 0) {
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '### Portable build failure'
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```text'
+            Get-Content build/portable-ci.log -Tail 100 | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```'
+            $detail = (Get-Content build/portable-ci.log -Tail 20) -join "`n"
+            $detail = $detail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Portable build::$detail"
+            exit $buildExit
+          }
+      - name: Python regression tests
+        shell: pwsh
+        env:
+          SCREENTRANSLATOR_GUI_TESTS: "1"
+        run: |
+          $python = if ('${{ matrix.profile }}' -eq 'argos') { '.venv-build-portable-argos/Scripts/python.exe' } else { '.venv-build-portable/Scripts/python.exe' }
+          & $python -m compileall -q screen_translator tests tools packaging
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & $python -m unittest discover -s tests -p 'test_*.py' -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Frozen EXE version and GUI/overlay smoke in Unicode path
+        shell: pwsh
+        run: |
+          $extra = if ('${{ matrix.profile }}' -eq 'argos') { '--argos' } else { '' }
+          & cmd /d /c "python tools/smoke_portable.py dist/ScreenTranslator-${{ matrix.profile }}-prototype-unsigned-test-only.zip $extra >build/portable-smoke.log 2>&1"
+          $smokeExit = $LASTEXITCODE
+          Get-Content build/portable-smoke.log
+          if ($smokeExit -ne 0) {
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '### Portable smoke failure'
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```text'
+            Get-Content build/portable-smoke.log -Tail 100 | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
+            Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```'
+            $detail = (Get-Content build/portable-smoke.log -Tail 40) -join "`n"
+            $detail = $detail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Portable smoke log::$detail"
+            exit $smokeExit
+          }
+      - name: Temporary prototype / unsigned / test only ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenTranslator-windows-x64-${{ matrix.profile }}-prototype-unsigned-test-only
+          path: dist/ScreenTranslator-${{ matrix.profile }}-prototype-unsigned-test-only.zip
+          if-no-files-found: error
+          retention-days: 7
