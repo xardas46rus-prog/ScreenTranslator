@@ -16,6 +16,15 @@ from screen_translator.__main__ import main, show_startup_error
 
 
 class PortableTests(unittest.TestCase):
+    def test_cli_sets_utf8_even_when_inherited_console_is_ascii(self):
+        code = ("import sys; sys.stdout.reconfigure(encoding='ascii'); "
+                "from screen_translator.__main__ import main; "
+                "sys.argv=['screen_translator','--diagnose']; main(); print('Игрок: 中文')")
+        result = subprocess.run([sys.executable, "-c", code], capture_output=True,
+                                text=True, encoding="utf-8", timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("Игрок: 中文", result.stdout)
+
     def test_version_and_diagnosis_from_unicode_directory_without_gui(self):
         root = Path(__file__).resolve().parents[1]
         with tempfile.TemporaryDirectory(prefix="Проверка portable ") as folder:

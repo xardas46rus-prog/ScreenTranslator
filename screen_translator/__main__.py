@@ -9,6 +9,11 @@ from . import __version__
 
 def main():
     freeze_support()
+    # Frozen Python может игнорировать PYTHONIOENCODING/PYTHONUTF8.
+    # У windowed EXE потоки равны None; файлов/логов здесь не создаём.
+    for stream in (sys.stdout, sys.stderr):
+        if stream is not None and hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = argparse.ArgumentParser(description="ScreenTranslator — чистый стартовый прототип")
     parser.add_argument("--version", action="version", version=__version__)
     parser.add_argument("--diagnose", action="store_true", help="Локальная диагностика без OCR, моделей и сети")
