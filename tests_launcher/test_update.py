@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 
 from launcher.update import PREFIX, API, REPOSITORY, UpdateError, canonical, verify_manifest, verify_archive, validate_redirect
 from launcher.network import GitHub, Updates, _Redirect
-from launcher.install import Installation, atomic_json, zip_entries
+from launcher.install import Installation, atomic_json, zip_entries, plain
 
 
 class Fixture:
@@ -243,6 +243,15 @@ class InstallationTests(unittest.TestCase):
         with patch("launcher.install.shutil.disk_usage", return_value=unittest.mock.Mock(free=0)):
             with self.assertRaises(UpdateError): self.install("0.2.2")
         self.assertEqual(self.store.state(), state)
+
+    def test_filesystem_symlink_is_not_an_installation_directory(self):
+        link = self.path / "linked"
+        try:
+            link.symlink_to(self.store.root, target_is_directory=True)
+        except OSError:
+            self.skipTest("ОС не разрешает создание symlink в тесте")
+        with self.assertRaises(UpdateError):
+            plain(link)
 
     def test_lock_and_tampered_payload_fail_closed(self):
         self.install()

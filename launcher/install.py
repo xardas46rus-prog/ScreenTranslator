@@ -17,9 +17,12 @@ from .update import MAX_UNPACKED, UpdateError, canonical, parse_json, verify_arc
 
 def plain(path):
     path = Path(path).absolute()
-    if path.resolve() != path or path.is_symlink() or (hasattr(path, "is_junction") and path.is_junction()):
-        raise UpdateError("Каталог установки не должен содержать ссылки или junction")
-    return path
+    # Windows TEMP часто содержит легальный 8.3 alias RUNNER~1. Отличие resolve()
+    # от исходной строки само по себе не означает symlink/reparse point.
+    for part in (path, *path.parents):
+        if part.is_symlink() or (hasattr(part, "is_junction") and part.is_junction()):
+            raise UpdateError(f"Ссылки или junction в пути недопустимы: {part}")
+    return path.resolve()
 
 
 def atomic_json(path, value):
