@@ -1,0 +1,13 @@
+# Python 3.12 x64; только инструменты сборки (транзитивные зависимости включены).
+pip==25.2
+setuptools==80.9.0
+PyInstaller==6.16.0
+pyinstaller-hooks-contrib==2025.9
+altgraph==0.17.4
+packaging==25.0
+pefile==2023.2.7; sys_platform == 'win32'
+pywin32-ctypes==0.2.3; sys_platform == 'win32'
+# OCR включён в portable, движок Tesseract и языки устанавливаются отдельно.
+mss==10.1.0
+Pillow==11.3.0
+pytesseract==0.3.13

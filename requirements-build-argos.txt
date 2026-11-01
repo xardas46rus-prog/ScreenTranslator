@@ -1,0 +1,8 @@
+# Необязательный профиль; без моделей. Остальные зависимости разрешает pip.
+-r requirements-build.txt
+argostranslate==1.9.6
+ctranslate2==4.6.0
+numpy==1.26.4
+torch==2.5.1
+# stanza 1.1.1 содержит старый сгенерированный protobuf-код.
+protobuf==3.20.3
