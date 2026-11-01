@@ -9,8 +9,11 @@ import zipfile
 
 
 def run(exe, *args):
-    return subprocess.run([str(exe), *args], cwd=exe.parent, check=True,
-                          capture_output=True, text=True, encoding="utf-8", timeout=90)
+    result = subprocess.run([str(exe), *args], cwd=exe.parent,
+                            capture_output=True, text=True, encoding="utf-8", timeout=90)
+    if result.returncode:
+        raise RuntimeError(f"{exe.name} {args}: exit {result.returncode}\n{result.stdout}\n{result.stderr}")
+    return result
 
 
 def main():
