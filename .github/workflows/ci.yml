@@ -2,7 +2,7 @@ name: Screen Translator checks
 
 on:
   push:
-    branches: [main, feat/issue-4-windows-portable-exe, feat/issue-5-signed-launcher]
+    branches: [main, feat/issue-4-windows-portable-exe, feat/issue-5-signed-launcher, feat/issue-6-auto-updates]
   pull_request:
   workflow_dispatch:
 
@@ -55,7 +55,7 @@ jobs:
       - name: GUI tests (Linux virtual display)
         if: runner.os == 'Linux' && steps.files.outputs.present == 'true'
         run: xvfb-run -a env SCREENTRANSLATOR_GUI_TESTS=1 python -m unittest discover -s tests -p "test_gui.py" -v
-      - name: Launcher tests
+      - name: Launcher tests and offline signed-release end-to-end
         if: hashFiles('tests_launcher/test_*.py') != ''
         run: python -m unittest discover -s tests_launcher -p "test_*.py" -v
       - name: Launcher GUI (Windows)

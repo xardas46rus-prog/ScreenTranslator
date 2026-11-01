@@ -19,6 +19,8 @@ This repository hosts a Windows 10/11 x64 Python OCR translator: English/Chinese
 - Never weaken manifest signature, ZIP validation or replay checks. Production launcher/trust.py intentionally has no keys; no test trust override in the shipped CLI/GUI. Test keys are generated only inside tests.
 - Keep immutable installed versions and atomic state switching. Never delete unknown files or move user models into replaceable application directories. Rollback must retain the high-water version.
 - Launcher dependencies: requirements-launcher.txt; Windows build: build_launcher.bat, dedicated venv/spec without translator/Argos/torch. Release publication and real key enrollment require owner review.
+- Automatic version checks are opt-in; downloads/installation need explicit user confirmation. Only the first verified managed installation starts after that confirmation. Preserve external EXE as unmanaged.
+- Local signing workflow: tools/prepare_signed_release.py and docs/UPDATE_RELEASE_PROCESS_RU.md. Production keygen/sign only on owner's PC, encrypted key outside every checkout, interactive password, never CI. Public-key fingerprint enrollment remains a separate owner-reviewed change.
 - Translator entry: python -m screen_translator
 - Launcher entry: python -m launcher
 - Python syntax: python -m compileall -q screen_translator launcher tools

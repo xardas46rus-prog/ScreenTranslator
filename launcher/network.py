@@ -48,6 +48,12 @@ class GitHub:
             if exact and total != limit:
                 raise UpdateError("Неполная загрузка ZIP")
             return b"".join(blocks)
+        except error.HTTPError as exc:
+            if exc.code == 404:
+                raise UpdateError("Подписанный Release пока отсутствует (HTTP 404)") from exc
+            if exc.code == 403:
+                raise UpdateError("Доступ к GitHub запрещён (HTTP 403): проверьте proxy/сеть и лимит GitHub API") from exc
+            raise UpdateError(f"GitHub вернул HTTP {exc.code}; обновление не установлено") from exc
         except (error.URLError, OSError, TimeoutError) as exc:
             raise UpdateError("GitHub недоступен, загрузка прервана или истёк таймаут") from exc
 

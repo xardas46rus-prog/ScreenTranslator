@@ -80,9 +80,17 @@ def verify_manifest(data, keys, profile):
         Ed25519PublicKey.from_public_bytes(keys[key_id]).verify(signature, PREFIX + canonical(payload))
     except (InvalidSignature, ValueError, TypeError, RecursionError) as exc:
         raise UpdateError("Подпись Ed25519 не подтверждена") from exc
+    return validate_payload(payload, profile, data)
+
+
+def validate_payload(payload, profile, envelope=b""):
+    """Общая схема для проверенного манифеста и локальной подготовки выпуска.
+
+    Сама по себе схема не даёт доверия: установка использует verify_manifest.
+    """
     fields = {"schema", "version", "channel", "platform", "profile", "url", "asset_id",
               "size", "sha256", "min_launcher"}
-    if set(payload) != fields or type(payload["schema"]) is not int or payload["schema"] != 1:
+    if not isinstance(payload, dict) or set(payload) != fields or type(payload["schema"]) is not int or payload["schema"] != 1:
         raise UpdateError("Неподдерживаемая схема манифеста")
     if payload["channel"] != "stable" or payload["platform"] != "windows-x64":
         raise UpdateError("Неверный канал или платформа")
@@ -102,7 +110,7 @@ def verify_manifest(data, keys, profile):
     if payload["url"] != expected:
         raise UpdateError("Разрешён только фиксированный asset официального GitHub Release")
     return Manifest(payload["version"], profile, expected, payload["asset_id"], payload["size"],
-                    payload["sha256"], bytes(data))
+                    payload["sha256"], bytes(envelope))
 
 
 def verify_archive(path, manifest, cancel=None):
