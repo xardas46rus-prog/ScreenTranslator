@@ -11,7 +11,7 @@ import tempfile
 from threading import Event
 import unittest
 from unittest.mock import MagicMock, patch
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 from launcher.flow import UpdateFlow
 from launcher.install import Installation
@@ -177,6 +177,10 @@ class EndToEndTests(unittest.TestCase):
             opener.open.side_effect = HTTPError(API + "/releases/latest", code, "test", {}, None)
             with self.subTest(code=code), self.assertRaisesRegex(UpdateError, text):
                 GitHub(opener).read(API + "/releases/latest", 1024, Event())
+        opener = MagicMock()
+        opener.open.side_effect = URLError(OSError("Tunnel connection failed: 403 Forbidden"))
+        with self.assertRaisesRegex(UpdateError, "Proxy/сеть.*403"):
+            GitHub(opener).read(API + "/releases/latest", 1024, Event())
 
 
 class LocalReleaseToolTests(unittest.TestCase):
