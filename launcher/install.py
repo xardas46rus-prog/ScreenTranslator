@@ -105,15 +105,19 @@ def extract_verified(zip_path, target, cancel):
 
 def check_executable(path):
     with path.open("rb") as stream:
-        header = stream.read(64)
-        if len(header) != 64 or header[:2] != b"MZ":
-            raise UpdateError("ScreenTranslator.exe не является Windows x64 PE")
-        offset = struct.unpack_from("<I", header, 60)[0]
-        if offset < 64 or offset > path.stat().st_size - 6:
-            raise UpdateError("Повреждён PE-заголовок")
-        stream.seek(offset)
-        if stream.read(6) != b"PE\0\0\x64\x86":
-            raise UpdateError("Требуется Windows x64 executable")
+        check_pe(stream, path.stat().st_size)
+
+
+def check_pe(stream, size):
+    header = stream.read(64)
+    if len(header) != 64 or header[:2] != b"MZ":
+        raise UpdateError("ScreenTranslator.exe не является Windows x64 PE")
+    offset = struct.unpack_from("<I", header, 60)[0]
+    if offset < 64 or offset > size - 6:
+        raise UpdateError("Повреждён PE-заголовок")
+    stream.seek(offset)
+    if stream.read(6) != b"PE\0\0\x64\x86":
+        raise UpdateError("Требуется Windows x64 executable")
 
 
 class Installation:
@@ -262,16 +266,23 @@ class Installation:
             # highwater не уменьшается: откат не разрешает повтор старого сетевого манифеста.
             atomic_json(self.state_path, state)
 
-    def launch(self, legacy=None):
+    def launch(self, legacy=None, *, expected_version=None, cancel=None):
         with self.lock():
             if self.busy():
                 raise UpdateError("Переводчик уже запущен этим лаунчером")
             if legacy is not None:
+                if expected_version is not None:
+                    raise UpdateError("Внешний EXE не является управляемой подписанной версией")
                 exe = plain(Path(legacy) / "ScreenTranslator" / "ScreenTranslator.exe")
                 if not exe.is_file():
                     raise UpdateError("Нет ScreenTranslator/ScreenTranslator.exe в выбранном каталоге")
             else:
-                exe = self.checked_exe(self.state()["current"])
+                entry = self.state()["current"]
+                if expected_version is not None and (entry is None or entry["version"] != expected_version):
+                    raise UpdateError("Активная версия изменилась; запустите её вручную после проверки")
+                exe = self.checked_exe(entry)
+            if cancel is not None and cancel.is_set():
+                raise UpdateError("Запуск отменён; установленная версия сохранена")
             self.child = subprocess.Popen([str(exe)], cwd=exe.parent, shell=False)
 
     def stop(self):
