@@ -105,14 +105,18 @@ jobs:
       - name: Frozen EXE version and GUI/overlay smoke in Unicode path
         shell: pwsh
         run: |
-          $extra = if ('${{ matrix.profile }}' -eq 'argos') { @('--argos') } else { @() }
-          python tools/smoke_portable.py 'dist/ScreenTranslator-${{ matrix.profile }}-prototype-unsigned-test-only.zip' @extra 2>&1 | Tee-Object -FilePath build/portable-smoke.log
+          $extra = if ('${{ matrix.profile }}' -eq 'argos') { '--argos' } else { '' }
+          & cmd /d /c "python tools/smoke_portable.py dist/ScreenTranslator-${{ matrix.profile }}-prototype-unsigned-test-only.zip $extra >build/portable-smoke.log 2>&1"
           $smokeExit = $LASTEXITCODE
+          Get-Content build/portable-smoke.log
           if ($smokeExit -ne 0) {
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '### Portable smoke failure'
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```text'
             Get-Content build/portable-smoke.log -Tail 100 | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY
             Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Value '```'
+            $detail = (Get-Content build/portable-smoke.log -Tail 40) -join "`n"
+            $detail = $detail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Portable smoke log::$detail"
             exit $smokeExit
           }
       - name: Temporary prototype / unsigned / test only ZIP
