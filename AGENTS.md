@@ -15,6 +15,10 @@ This repository hosts a Windows 10/11 x64 Python OCR translator: English/Chinese
 - Work in feature branches and open PRs for review; do not publish GitHub Releases without explicit developer approval.
 
 ## Test / build
+- Launcher is an independent offline/test-only prototype. Read docs/LAUNCHER_RU.md before changing update code.
+- Never weaken manifest signature, ZIP validation or replay checks. Production launcher/trust.py intentionally has no keys; no test trust override in the shipped CLI/GUI. Test keys are generated only inside tests.
+- Keep immutable installed versions and atomic state switching. Never delete unknown files or move user models into replaceable application directories. Rollback must retain the high-water version.
+- Launcher dependencies: requirements-launcher.txt; Windows build: build_launcher.bat, dedicated venv/spec without translator/Argos/torch. Release publication and real key enrollment require owner review.
 - Translator entry: python -m screen_translator
 - Launcher entry: python -m launcher
 - Python syntax: python -m compileall -q screen_translator launcher tools
