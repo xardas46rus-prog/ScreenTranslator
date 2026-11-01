@@ -2,7 +2,7 @@ name: Screen Translator checks
 
 on:
   push:
-    branches: [main, feat/issue-4-windows-portable-exe]
+    branches: [main, feat/issue-4-windows-portable-exe, feat/issue-5-signed-launcher]
   pull_request:
   workflow_dispatch:
 
@@ -37,10 +37,11 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
+          python -m pip install -r requirements-launcher.txt
       - name: Compile and import
         if: steps.files.outputs.present == 'true'
         run: |
-          python -m compileall -q screen_translator tests
+          python -m compileall -q screen_translator launcher tools tests tests_launcher
           python -c "import screen_translator.core, screen_translator.providers, screen_translator.worker"
           python -m screen_translator --version
       - name: Translator tests (headless)
@@ -57,6 +58,14 @@ jobs:
       - name: Launcher tests
         if: hashFiles('tests_launcher/test_*.py') != ''
         run: python -m unittest discover -s tests_launcher -p "test_*.py" -v
+      - name: Launcher GUI (Windows)
+        if: runner.os == 'Windows'
+        env:
+          SCREENTRANSLATOR_GUI_TESTS: "1"
+        run: python -m unittest discover -s tests_launcher -p "test_gui.py" -v
+      - name: Launcher GUI (Linux virtual display)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a env SCREENTRANSLATOR_GUI_TESTS=1 python -m unittest discover -s tests_launcher -p "test_gui.py" -v
 
   portable:
     name: Windows x64 portable (${{ matrix.profile }}, unsigned test only)
@@ -124,5 +133,46 @@ jobs:
         with:
           name: ScreenTranslator-windows-x64-${{ matrix.profile }}-prototype-unsigned-test-only
           path: dist/ScreenTranslator-${{ matrix.profile }}-prototype-unsigned-test-only.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  launcher:
+    name: Windows x64 launcher (unsigned test only)
+    runs-on: windows-latest
+    timeout-minutes: 15
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+      SCREENTRANSLATOR_GUI_TESTS: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          architecture: x64
+      - name: Build and smoke frozen launcher (offline)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force build | Out-Null
+          & cmd /d /c "build_launcher.bat >build/launcher-ci.log 2>&1"
+          $buildExit = $LASTEXITCODE
+          Get-Content build/launcher-ci.log
+          if ($buildExit -ne 0) {
+            $detail = (Get-Content build/launcher-ci.log -Tail 50) -join "`n"
+            $detail = $detail.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Launcher build::$detail"
+            exit $buildExit
+          }
+      - name: Launcher signature / installation / GUI regression tests (offline)
+        shell: pwsh
+        run: |
+          .venv-build-launcher/Scripts/python.exe -m compileall -q launcher tests_launcher tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .venv-build-launcher/Scripts/python.exe -m unittest discover -s tests_launcher -p 'test_*.py' -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ScreenTranslatorLauncher-windows-x64-prototype-unsigned-test-only
+          path: dist/launcher/ScreenTranslatorLauncher-prototype-unsigned-test-only.zip
           if-no-files-found: error
           retention-days: 7

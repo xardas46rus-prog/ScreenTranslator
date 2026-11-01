@@ -32,6 +32,7 @@ MANIFEST
 *.manifest
 *.spec
 !packaging/ScreenTranslator.spec
+!packaging/Launcher.spec
 
 # Installer logs
 pip-log.txt
@@ -236,6 +237,7 @@ __marimo__/
 *.gguf
 *.traineddata
 **/settings.json
+**/preferences.json
 **/provider_keys.dpapi.json
 **/*secret*.json
 **/private*.json
